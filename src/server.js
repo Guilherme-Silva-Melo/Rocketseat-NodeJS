@@ -1,21 +1,28 @@
 import http from 'node:http'
+import {json} from './middlewares/json.js'
 
-const users = []
-const server = http.createServer((req, res) => {
+import {routes} from './routes.js';
+
+const server = http.createServer(async (req, res) => {
     const {method, url} = req;
+    
+    //funcao externa
+    await json(req, res)
 
-    //TRATANDO REQUISICOES
-    if(method === 'GET' && url ==='/users') {
-        //retorno da requisicao get, setando o tipo de conteudo json e os usuarios em formato json
-        return res.setHeader('Content-type','application/json').end(JSON.stringify(users));
-    } 
-    
-    if(method === 'POST' && url ==='/users') {
-        users.push({id:1, name: 'Gui', email: 'gui@email.com'});
-        return res.end('Criação de usuario');
+    //Buscando se existe a rota
+    const route = routes.find(route => {
+        return route.method === method && route.path.test(url);
+    })
+
+    if(route){
+        const routeParams = req.url.match(route.path);
+
+        route.params = {...routeParams.groups}
+        req.params = route.params
+        return route.handler(req, res)
     }
-    
-    return res.end('Hello Gui');
+
+    return res.writeHead(404).end('404 NOT FOUND');
 });
 
 //ouvindo a porta 3333 http do localhost
